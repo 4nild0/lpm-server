@@ -1,0 +1,12 @@
+name = "lpm-server"
+version = "1.0.0"
+description = "Lua Package Server"
+authors = ["Anildo"]
+license = "MIT"
+
+[dependencies]
+lpm-test = "0.1.0"
+
+[scripts]
+start = "lua server.lua"
+test = "lua tests/test_runner.lua"
