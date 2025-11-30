@@ -1,13 +1,13 @@
-local M = {}
+local RequestRouter = {}
 
-local routes = {}
+local registered_routes = {}
 
-function M.register(method, pattern, handler)
-    if not routes[method] then
-        routes[method] = {}
+function RequestRouter.register(method, pattern, handler)
+    if not registered_routes[method] then
+        registered_routes[method] = {}
     end
     
-    table.insert(routes[method], {
+    table.insert(registered_routes[method], {
         pattern = pattern,
         handler = handler
     })
@@ -44,21 +44,21 @@ local function match_route(pattern, path)
     return params
 end
 
-function M.route(method, path)
-    local method_routes = routes[method]
+function RequestRouter.route(method, path)
+    local method_routes = registered_routes[method]
     
     if not method_routes then
         return nil
     end
     
-    for _, route in ipairs(method_routes) do
-        local params = match_route(route.pattern, path)
+    for _, route_item in ipairs(method_routes) do
+        local params = match_route(route_item.pattern, path)
         if params then
-            return route.handler, params
+            return route_item.handler, params
         end
     end
     
     return nil
 end
 
-return M
+return RequestRouter

@@ -1,7 +1,7 @@
-name = "lpm-server"
+name = "lpm-cli"
 version = "0.1.0"
 author = "Anildo"
-description = "Server for Lua Project Manager"
+description = "CLI for Lua Project Manager"
 
 [dependencies]
 lpm-core = "0.1.0"

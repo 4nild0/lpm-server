@@ -1,29 +1,29 @@
-local M = {}
+local Authentication = {}
 
-local auth_token = nil
+local authentication_token = nil
 
-function M.init()
-    auth_token = _G.ENV.AUTH_TOKEN or "default-token"
+function Authentication.init()
+    authentication_token = _G.ENV.AUTH_TOKEN or "default-token"
 end
 
-function M.validate(token)
-    if not auth_token then
-        M.init()
+function Authentication.validate(token)
+    if not authentication_token then
+        Authentication.init()
     end
-    return token == auth_token
+    return token == authentication_token
 end
 
-function M.extract_from_header(auth_header)
-    if not auth_header then
+function Authentication.extract_from_header(authorization_header)
+    if not authorization_header then
         return nil
     end
     
-    local token = auth_header:match("^Bearer%s+(.+)$")
+    local token = authorization_header:match("^Bearer%s+(.+)$")
     if token then
         return token
     end
     
-    return auth_header
+    return authorization_header
 end
 
-return M
+return Authentication

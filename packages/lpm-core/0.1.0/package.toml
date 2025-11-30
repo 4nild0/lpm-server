@@ -1,0 +1,8 @@
+name = "lpm-core"
+version = "0.1.0"
+author = "Anildo"
+description = "Core library for Lua Project Manager"
+
+[dependencies]
+
+[test-dependencies]

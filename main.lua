@@ -2,6 +2,6 @@ package.path = "./deps/?.lua;./deps/?/main.lua;./deps/lpm-core/src/?.lua;./src/?
 package.cpath = "./deps/lpm-core/src/?.so;" .. package.cpath
 
 local Core = require("lpm-core")
-local Server = require("server_init")
+local server_initializer = require("server_init")
 
-Server.start()
+server_initializer.start()

@@ -1,62 +1,122 @@
-local fs = require("fs")
-local path = require("path")
+local filesystem_operations = require("fs")
+local path_operations = require("path")
+local metadata_manager = require("metadata")
+local toml_parser = require("toml")
 
-local M = {}
+local PackageStorage = {}
 
 local STORAGE_DIR = "packages"
 
-function M.init()
-    if not fs.exists(STORAGE_DIR) then
-        fs.mkdir_p(STORAGE_DIR)
+function PackageStorage.init()
+    if not filesystem_operations.exists(STORAGE_DIR) then
+        filesystem_operations.mkdir_p(STORAGE_DIR)
     end
 end
 
-function M.get_package_path(name, version)
-    return path.join(STORAGE_DIR, name, version)
+function PackageStorage.get_package_path(package_name, package_version)
+    return path_operations.join(STORAGE_DIR, package_name, package_version)
 end
 
-function M.get_package_file(name, version)
-    local pkg_path = M.get_package_path(name, version)
-    return path.join(pkg_path, name .. "-" .. version .. ".zip")
+function PackageStorage.get_package_file(package_name, package_version)
+    local package_path = PackageStorage.get_package_path(package_name, package_version)
+    return path_operations.join(package_path, package_name .. "-" .. package_version .. ".zip")
 end
 
-function M.save_package(name, version, data)
-    local pkg_path = M.get_package_path(name, version)
+function PackageStorage.get_package_metadata_file(package_name, package_version)
+    local package_path = PackageStorage.get_package_path(package_name, package_version)
+    return path_operations.join(package_path, "package.toml")
+end
+
+function PackageStorage.save_package(package_name, package_version, package_data)
+    local package_path = PackageStorage.get_package_path(package_name, package_version)
     
-    if not fs.exists(pkg_path) then
-        fs.mkdir_p(pkg_path)
+    if not filesystem_operations.exists(package_path) then
+        filesystem_operations.mkdir_p(package_path)
     end
     
-    local file_path = M.get_package_file(name, version)
-    return fs.write_file(file_path, data)
+    local file_path = PackageStorage.get_package_file(package_name, package_version)
+    return filesystem_operations.write_file(file_path, package_data)
 end
 
-function M.load_package(name, version)
-    local file_path = M.get_package_file(name, version)
+function PackageStorage.update_package(package_name, package_version, package_data)
+    local file_path = PackageStorage.get_package_file(package_name, package_version)
     
-    if not fs.exists(file_path) then
+    if not filesystem_operations.exists(file_path) then
+        return false
+    end
+    
+    return filesystem_operations.write_file(file_path, package_data)
+end
+
+function PackageStorage.delete_package(package_name, package_version)
+    local package_path = PackageStorage.get_package_path(package_name, package_version)
+    
+    if not filesystem_operations.exists(package_path) then
+        return false
+    end
+    
+    return filesystem_operations.remove(package_path)
+end
+
+function PackageStorage.load_package(package_name, package_version)
+    local file_path = PackageStorage.get_package_file(package_name, package_version)
+    
+    if not filesystem_operations.exists(file_path) then
         return nil
     end
     
-    return fs.read_file(file_path)
+    return filesystem_operations.read_file(file_path)
 end
 
-function M.list_packages()
+function PackageStorage.get_package_info(package_name, package_version)
+    local package_path = PackageStorage.get_package_path(package_name, package_version)
+    
+    if not filesystem_operations.exists(package_path) then
+        return nil
+    end
+    
+    local metadata_file = PackageStorage.get_package_metadata_file(package_name, package_version)
+    local metadata_content = nil
+    
+    if filesystem_operations.exists(metadata_file) then
+        metadata_content = filesystem_operations.read_file(metadata_file)
+    end
+    
+    local file_path = PackageStorage.get_package_file(package_name, package_version)
+    local file_size = 0
+    if filesystem_operations.exists(file_path) then
+        local pipe = io.popen("stat -c %s " .. file_path .. " 2>/dev/null")
+        if pipe then
+            file_size = tonumber(pipe:read("*n")) or 0
+            pipe:close()
+        end
+    end
+    
+    return {
+        name = package_name,
+        version = package_version,
+        metadata = metadata_content and toml_parser.decode(metadata_content) or nil,
+        size = file_size,
+        path = package_path
+    }
+end
+
+function PackageStorage.list_packages()
     local packages = {}
     
-    if not fs.exists(STORAGE_DIR) then
+    if not filesystem_operations.exists(STORAGE_DIR) then
         return packages
     end
     
-    local names = fs.list_dir(STORAGE_DIR)
-    for _, name in ipairs(names) do
-        local name_path = path.join(STORAGE_DIR, name)
-        if fs.is_dir(name_path) then
-            local versions = fs.list_dir(name_path)
+    local package_names = filesystem_operations.list_dir(STORAGE_DIR)
+    for _, package_name in ipairs(package_names) do
+        local name_path = path_operations.join(STORAGE_DIR, package_name)
+        if filesystem_operations.is_dir(name_path) then
+            local versions = filesystem_operations.list_dir(name_path)
             for _, version in ipairs(versions) do
-                if fs.is_dir(path.join(name_path, version)) then
+                if filesystem_operations.is_dir(path_operations.join(name_path, version)) then
                     table.insert(packages, {
-                        name = name,
+                        name = package_name,
                         version = version
                     })
                 end
@@ -67,4 +127,22 @@ function M.list_packages()
     return packages
 end
 
-return M
+function PackageStorage.list_versions(package_name)
+    local name_path = path_operations.join(STORAGE_DIR, package_name)
+    
+    if not filesystem_operations.exists(name_path) or not filesystem_operations.is_dir(name_path) then
+        return {}
+    end
+    
+    local versions = {}
+    local version_directories = filesystem_operations.list_dir(name_path)
+    for _, version in ipairs(version_directories) do
+        if filesystem_operations.is_dir(path_operations.join(name_path, version)) then
+            table.insert(versions, version)
+        end
+    end
+    
+    return versions
+end
+
+return PackageStorage

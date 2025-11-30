@@ -1,4 +1,4 @@
-local M = {}
+local Logger = {}
 
 local LOG_LEVELS = {
     DEBUG = 1,
@@ -9,7 +9,7 @@ local LOG_LEVELS = {
 
 local current_level = LOG_LEVELS.INFO
 
-function M.set_level(level)
+function Logger.set_level(level)
     current_level = LOG_LEVELS[level] or LOG_LEVELS.INFO
 end
 
@@ -21,28 +21,28 @@ local function should_log(level)
     return LOG_LEVELS[level] >= current_level
 end
 
-function M.debug(message)
+function Logger.debug(message)
     if should_log("DEBUG") then
         print(format_message("DEBUG", message))
     end
 end
 
-function M.info(message)
+function Logger.info(message)
     if should_log("INFO") then
         print(format_message("INFO", message))
     end
 end
 
-function M.warn(message)
+function Logger.warn(message)
     if should_log("WARN") then
         print(format_message("WARN", message))
     end
 end
 
-function M.error(message)
+function Logger.error(message)
     if should_log("ERROR") then
         print(format_message("ERROR", message))
     end
 end
 
-return M
+return Logger
