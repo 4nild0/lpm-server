@@ -8,7 +8,7 @@ function M.test_save_package()
     storage.init("test_packages")
     
     local manifest = 'name = "test"\nversion = "1.0.0"'
-    local archive_data = "PK\3\4..." -- Fake zip header
+    local archive_data = "PK\3\4..." 
     
     local ok, err = storage.save_package("test", "1.0.0", manifest, archive_data)
     t.assert_true(ok, "Save should succeed: " .. tostring(err))

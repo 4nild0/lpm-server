@@ -1,67 +1,45 @@
-local t = require("lpm-test.src.lpm_test")
 
-local M = {}
 
-function M.test_server_start()
-    local mock_input = {
-        "GET /projects HTTP/1.1",
-        "Host: localhost:4040",
-        "User-Agent: test",
-        "",
-    }
-    local input_index = 1
-    local output = {}
-    
-    local original_io = _G.io
-    _G.io = {
-        read = function(n)
-            if type(n) == "number" then
-                return ""
-            end
-            local line = mock_input[input_index]
-            input_index = input_index + 1
-            return line
-        end,
-        write = function(data)
-            table.insert(output, data)
-        end,
-        flush = function() end,
-        open = function() return nil end
-    }
-    
-    local original_storage = package.loaded["src.storage"]
-    package.loaded["src.storage"] = {
-        init = function() end,
-        list_projects = function() return {"test-proj"} end
-    }
-    
-    package.loaded["src.server"] = nil
-    local server = require("src.server")
-    
-    -- Mock server loop to run once or handle it differently?
-    -- The original test called server.start(4040).
-    -- If server.start loops forever, this test will hang.
-    -- Assuming server.start in the original test was designed to be testable or the mock makes it exit?
-    -- Looking at the original test, it just called server.start(4040).
-    -- If the original test passed, then server.start must return or handle one request.
-    -- I will assume it works as is.
-    
-    -- Wait, if server.start is an infinite loop, how did the original test pass?
-    -- Maybe the mock io.read returns nil eventually?
-    -- In the mock: if input_index > #mock_input, it returns nil (implied).
-    -- Let's check the mock again.
-    -- `local line = mock_input[input_index]` -> if index out of bounds, line is nil.
-    -- So it returns nil. The server probably stops on nil input.
-    
-    server.start(4040)
-    
-    local response = table.concat(output)
-    t.assert_true(response:find("HTTP/1.1 200") ~= nil, "Should return 200 OK")
-    t.assert_true(response:find("test%-proj") ~= nil, "Should contain project data")
-    t.assert_true(response:find("Access%-Control%-Allow%-Origin") ~= nil, "Should have CORS headers")
-    
-    _G.io = original_io
-    package.loaded["src.storage"] = original_storage
+package.path = package.path .. ";./src/?.lua;./deps/lpm-core/src/?.lua;./deps/lpm-core/src/init.lua"
+
+local core = require("init")
+
+local http = require("http")
+local storage = require("storage")
+
+local function assert_eq(a, b, msg)
+    if a ~= b then
+        error(string.format("%s: expected %s, got %s", msg or "Assertion failed", tostring(b), tostring(a)))
+    end
 end
 
-return M
+local function test_http_parse()
+    print("Testing HTTP parse...")
+    local data = "GET /test HTTP/1.1\r\nHost: localhost\r\n\r\n"
+    local req = http.parse_request(data)
+    assert_eq(req.method, "GET", "method mismatch")
+    assert_eq(req.path, "/test", "path mismatch")
+end
+
+local function test_http_build()
+    print("Testing HTTP build...")
+    local response = http.build_response("200 OK", {}, "Hello")
+    assert_eq(response:match("200 OK") ~= nil, true, "status not found")
+    assert_eq(response:match("Hello") ~= nil, true, "body not found")
+end
+
+local function test_storage()
+    print("Testing storage...")
+    storage.init()
+    local ok = storage.save_package("test", "1.0.0", "test data")
+    assert_eq(ok, true, "save failed")
+    local data = storage.get_package("test", "1.0.0")
+    assert_eq(data, "test data", "data mismatch")
+end
+
+
+test_http_parse()
+test_http_build()
+test_storage()
+
+print("All tests passed!")

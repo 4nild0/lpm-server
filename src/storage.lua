@@ -1,60 +1,70 @@
+local fs = require("fs")
+local path = require("path")
+
 local M = {}
-local root_dir = "packages"
 
-function M.init(dir)
-    root_dir = dir or "packages"
-    os.execute("mkdir -p " .. root_dir)
-end
+local STORAGE_DIR = "packages"
 
-function M.save_package(name, version, manifest, archive_data)
-    local pkg_dir = string.format("%s/%s/%s", root_dir, name, version)
-    os.execute("mkdir -p " .. pkg_dir)
-    
-    local f_man = io.open(pkg_dir .. "/package.toml", "w")
-    if not f_man then return false, "failed to write manifest" end
-    f_man:write(manifest)
-    f_man:close()
-    
-    local f_arc = io.open(pkg_dir .. "/archive.zip", "w")
-    if not f_arc then return false, "failed to write archive" end
-    f_arc:write(archive_data)
-    f_arc:close()
-    
-    return true
-end
-
-function M.exists(name, version)
-    local path = string.format("%s/%s/%s/package.toml", root_dir, name, version)
-    local f = io.open(path, "r")
-    if f then
-        f:close()
-        return true
+function M.init()
+    if not fs.exists(STORAGE_DIR) then
+        fs.mkdir_p(STORAGE_DIR)
     end
-    return false
 end
 
-function M.get_archive_path(name, version)
-    return string.format("%s/%s/%s/archive.zip", root_dir, name, version)
+function M.get_package_path(name, version)
+    return path.join(STORAGE_DIR, name, version)
 end
 
-function M.list_projects()
-    local projects = {}
-    local p = io.popen("ls -1 " .. root_dir)
-    for name in p:lines() do
-        table.insert(projects, name)
+function M.get_package_file(name, version)
+    local pkg_path = M.get_package_path(name, version)
+    return path.join(pkg_path, name .. "-" .. version .. ".zip")
+end
+
+function M.save_package(name, version, data)
+    local pkg_path = M.get_package_path(name, version)
+    
+    if not fs.exists(pkg_path) then
+        fs.mkdir_p(pkg_path)
     end
-    p:close()
-    return projects
+    
+    local file_path = M.get_package_file(name, version)
+    return fs.write_file(file_path, data)
 end
 
-function M.get_versions(name)
-    local versions = {}
-    local p = io.popen("ls -1 " .. root_dir .. "/" .. name .. " 2>/dev/null")
-    for v in p:lines() do
-        table.insert(versions, v)
+function M.load_package(name, version)
+    local file_path = M.get_package_file(name, version)
+    
+    if not fs.exists(file_path) then
+        return nil
     end
-    p:close()
-    return versions
+    
+    return fs.read_file(file_path)
+end
+
+function M.list_packages()
+    local packages = {}
+    
+    if not fs.exists(STORAGE_DIR) then
+        return packages
+    end
+    
+    local names = fs.list_dir(STORAGE_DIR)
+    for _, name in ipairs(names) do
+        local name_path = path.join(STORAGE_DIR, name)
+        if fs.is_dir(name_path) then
+            local versions = fs.list_dir(name_path)
+            for _, version in ipairs(versions) do
+                if fs.is_dir(path.join(name_path, version)) then
+                    table.insert(packages, {
+                        name = name,
+                        version = version
+                    })
+                end
+            end
+        end
+    end
+    
+    return packages
 end
 
 return M

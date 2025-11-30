@@ -1,51 +1,82 @@
 # LPM Server
 
-Backend server for the LPM (Lua Package Manager) ecosystem.
+Servidor backend para o ecossistema LPM (Lua Package Manager).
 
-## Features
+## Funcionalidades
 
-- **Package Storage**: Store and retrieve Lua packages
-- **Version Management**: Multiple versions per package
-- **RESTful API**: JSON-based HTTP endpoints
-- **CORS Support**: Cross-origin requests enabled
-- **Pure Lua**: No external dependencies (uses custom socket extension)
+- **Armazenamento de Pacotes**: Armazena e recupera pacotes Lua
+- **Gerenciamento de Versões**: Múltiplas versões por pacote
+- **API RESTful**: Endpoints HTTP baseados em JSON
+- **Suporte a CORS**: Requisições cross-origin habilitadas
+- **Puro Lua**: Sem dependências externas (usa extensão de socket personalizada)
+- **Autenticação**: Suporte a autenticação de usuários
+- **Logs**: Sistema de logs para monitoramento
 
-## Installation
+## Instalação
 
 ```bash
-# Clone the repository
+# Clone o repositório
 git clone https://github.com/4nild0/lpm-server.git
 cd lpm-server
 
-# Run tests
+# Execute os testes
 lua tests.lua
 ```
 
-## Running the Server
+## Iniciando o Servidor
 
 ```bash
-# From the parent lpm directory
+# A partir do diretório raiz do lpm
 lua start_backend.lua
 
-# Server will start on port 4040
+# O servidor será iniciado na porta 4040
 ```
 
-## API Endpoints
+## Configuração
+
+Crie um arquivo `.env` na raiz do projeto para configurar:
+
+```
+PORT=4040
+STORAGE_PATH=./storage
+LOG_LEVEL=info
+JWT_SECRET=sua_chave_secreta_aqui
+```
+
+## Estrutura do Projeto
+
+```
+lpm-server/
+├── src/
+│   ├── auth.lua       # Autenticação e autorização
+│   ├── http.lua       # Servidor HTTP
+│   ├── logger.lua     # Sistema de logs
+│   ├── router.lua     # Roteamento de requisições
+│   ├── server.lua     # Configuração do servidor
+│   └── storage.lua    # Armazenamento de pacotes
+├── tests/             # Testes unitários
+│   ├── test_http.lua
+│   ├── test_server.lua
+│   └── test_storage.lua
+└── main.lua           # Ponto de entrada
+```
+
+## Endpoints da API
 
 ### GET /projects
 
-List all available packages.
+Lista todos os pacotes disponíveis.
 
-**Response:**
+**Resposta:**
 ```json
-["package-a", "package-b"]
+["pacote-a", "pacote-b"]
 ```
 
 ### GET /projects/:name
 
-Get package details and versions.
+Obtém detalhes e versões de um pacote.
 
-**Response:**
+**Resposta:**
 ```json
 {
   "name": "package-name",

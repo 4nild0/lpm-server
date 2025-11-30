@@ -1,32 +1,56 @@
 local M = {}
 
-function M.parse_request(str)
+function M.parse_request(data)
     local lines = {}
-    for line in str:gmatch("[^\r\n]+") do
+    for line in data:gmatch("[^\r\n]+") do
         table.insert(lines, line)
     end
     
     if #lines == 0 then return nil end
     
-    local method, path = lines[1]:match("^(%S+)%s+(%S+)")
+    local method, path, version = lines[1]:match("^(%S+)%s+(%S+)%s+(%S+)$")
+    if not method then return nil end
+    
+    local headers = {}
+    local body_start = 2
+    
+    for i = 2, #lines do
+        if lines[i] == "" then
+            body_start = i + 1
+            break
+        end
+        local key, value = lines[i]:match("^([^:]+):%s*(.+)$")
+        if key then
+            headers[key:lower()] = value
+        end
+    end
+    
+    local body = table.concat(lines, "\n", body_start)
     
     return {
         method = method,
-        path = path
+        path = path,
+        version = version,
+        headers = headers,
+        body = body
     }
 end
 
-function M.build_response(code, body)
-    local status = "OK"
-    if code == 404 then status = "Not Found" end
-    if code == 400 then status = "Bad Request" end
-    if code == 500 then status = "Internal Server Error" end
-    if code == 201 then status = "Created" end
+function M.build_response(status, headers, body)
+    local lines = {}
+    table.insert(lines, "HTTP/1.1 " .. status)
     
-    return string.format(
-        "HTTP/1.1 %d %s\r\nContent-Length: %d\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type\r\nContent-Type: application/json\r\n\r\n%s",
-        code, status, #body, body
-    )
+    headers = headers or {}
+    headers["Content-Length"] = headers["Content-Length"] or tostring(#(body or ""))
+    
+    for key, value in pairs(headers) do
+        table.insert(lines, key .. ": " .. value)
+    end
+    
+    table.insert(lines, "")
+    table.insert(lines, body or "")
+    
+    return table.concat(lines, "\r\n")
 end
 
 return M
