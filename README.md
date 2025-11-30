@@ -1,16 +1,19 @@
 # LPM Server
 
-Servidor backend para o ecossistema LPM (Lua Package Manager).
+Servidor HTTP para gerenciamento de pacotes do LPM (Lua Package Manager).
+
+## Descrição
+
+O `lpm-server` é um servidor HTTP que atua como repositório central de pacotes Lua. Ele fornece uma API RESTful para upload, download e listagem de pacotes, além de suporte para autenticação JWT e armazenamento persistente.
 
 ## Funcionalidades
 
-- **Armazenamento de Pacotes**: Armazena e recupera pacotes Lua
-- **Gerenciamento de Versões**: Múltiplas versões por pacote
-- **API RESTful**: Endpoints HTTP baseados em JSON
-- **Suporte a CORS**: Requisições cross-origin habilitadas
-- **Puro Lua**: Sem dependências externas (usa extensão de socket personalizada)
-- **Autenticação**: Suporte a autenticação de usuários
-- **Logs**: Sistema de logs para monitoramento
+- **API RESTful**: Endpoints para gerenciamento de pacotes
+- **Autenticação JWT**: Suporte a autenticação e autorização via tokens
+- **Armazenamento**: Armazenamento persistente de pacotes em disco
+- **Logs**: Sistema de logs configurável
+- **Roteamento**: Sistema de roteamento flexível
+- **CORS**: Suporte a requisições cross-origin
 
 ## Instalação
 
@@ -20,130 +23,160 @@ git clone https://github.com/4nild0/lpm-server.git
 cd lpm-server
 
 # Execute os testes
-lua tests.lua
+lua tests/test_server.lua
 ```
 
 ## Iniciando o Servidor
 
 ```bash
-# A partir do diretório raiz do lpm
-lua start_backend.lua
+# Iniciar o servidor
+lua main.lua
 
-# O servidor será iniciado na porta 4040
+# O servidor estará disponível em http://localhost:8080 (porta padrão)
 ```
 
 ## Configuração
 
-Crie um arquivo `.env` na raiz do projeto para configurar:
+Crie um arquivo `.env` na raiz do projeto com as seguintes variáveis:
+
+```env
+HOST=0.0.0.0              # Endereço do servidor (padrão: 0.0.0.0)
+PORT=8080                 # Porta do servidor (padrão: 8080)
+STORAGE_PATH=./packages   # Diretório de armazenamento de pacotes
+LOG_LEVEL=info            # Nível de log (debug, info, warn, error)
+JWT_SECRET=sua_chave_secreta  # Chave secreta para JWT
+DEBUG=false               # Modo debug (true/false)
+```
+
+## API Endpoints
+
+### Listar Pacotes
 
 ```
-PORT=4040
-STORAGE_PATH=./storage
-LOG_LEVEL=info
-JWT_SECRET=sua_chave_secreta_aqui
+GET /packages
 ```
+
+Retorna uma lista de todos os pacotes disponíveis no formato `nome@versao`.
+
+**Resposta:**
+```
+package1@1.0.0
+package2@2.1.0
+```
+
+### Download de Pacote
+
+```
+GET /packages/:name/:version
+```
+
+Baixa um pacote específico.
+
+**Parâmetros:**
+- `name`: Nome do pacote
+- `version`: Versão do pacote
+
+**Resposta:** Arquivo ZIP do pacote
+
+### Upload de Pacote
+
+```
+POST /packages/:name/:version
+Authorization: Bearer <token>
+Content-Type: application/zip
+```
+
+Faz upload de um novo pacote. Requer autenticação.
+
+**Parâmetros:**
+- `name`: Nome do pacote
+- `version`: Versão do pacote
+
+**Body:** Dados binários do arquivo ZIP do pacote
+
+**Resposta:**
+```json
+{"status": "Package uploaded"}
+```
+
+### Arquivos Estáticos
+
+```
+GET /*
+```
+
+Serve arquivos estáticos (se configurado).
+
+### CORS Preflight
+
+```
+OPTIONS *
+```
+
+Suporte a requisições CORS preflight.
 
 ## Estrutura do Projeto
 
 ```
 lpm-server/
 ├── src/
-│   ├── auth.lua       # Autenticação e autorização
-│   ├── http.lua       # Servidor HTTP
-│   ├── logger.lua     # Sistema de logs
-│   ├── router.lua     # Roteamento de requisições
-│   ├── server.lua     # Configuração do servidor
-│   └── storage.lua    # Armazenamento de pacotes
-├── tests/             # Testes unitários
+│   ├── auth.lua         # Autenticação e autorização JWT
+│   ├── http.lua         # Servidor HTTP básico
+│   ├── logger.lua       # Sistema de logs
+│   ├── router.lua       # Roteamento de requisições
+│   ├── routes/          # Definição das rotas
+│   │   ├── packages.lua # Rotas de gerenciamento de pacotes
+│   │   └── static.lua   # Rotas para arquivos estáticos
+│   ├── server.lua       # Configuração do servidor HTTP
+│   ├── server_init.lua  # Inicialização do servidor
+│   └── storage.lua      # Armazenamento de pacotes
+├── packages/            # Diretório de armazenamento (criado automaticamente)
+│   └── nome-pacote/
+│       └── versao/
+│           ├── package.toml    # Manifesto
+│           └── archive.zip     # Arquivo do pacote
+├── tests/               # Testes unitários
 │   ├── test_http.lua
 │   ├── test_server.lua
 │   └── test_storage.lua
-└── main.lua           # Ponto de entrada
+├── main.lua             # Ponto de entrada
+└── project.toml         # Manifesto do projeto
 ```
 
-## Endpoints da API
+## Formato de Armazenamento
 
-### GET /projects
-
-Lista todos os pacotes disponíveis.
-
-**Resposta:**
-```json
-["pacote-a", "pacote-b"]
-```
-
-### GET /projects/:name
-
-Obtém detalhes e versões de um pacote.
-
-**Resposta:**
-```json
-{
-  "name": "package-name",
-  "versions": ["1.0.0", "1.1.0"]
-}
-```
-
-### POST /packages?name=:name&version=:version
-
-Upload a new package version.
-
-**Request Body:** Raw package archive data
-
-**Response:**
-```json
-{"status": "Uploaded"}
-```
-
-### GET /stats
-
-Get repository statistics.
-
-**Response:**
-```json
-{"packages": 10}
-```
-
-### OPTIONS *
-
-CORS preflight support.
-
-## Project Structure
-
-```
-lpm-server/
-├── src/
-│   ├── http.lua       # HTTP request/response handling
-│   ├── server.lua     # Main server logic and routing
-│   └── storage.lua    # Package storage management
-├── tests/
-│   ├── test_http.lua
-│   ├── test_server.lua
-│   └── test_storage.lua
-├── server.lua         # Entry point
-└── project.toml       # Project manifest
-```
-
-## Testing
-
-Uses the [lpm-test](https://github.com/4nild0/lpm-test) framework.
-
-```bash
-lua tests.lua
-```
-
-## Storage Format
-
-Packages are stored in the following structure:
+Os pacotes são armazenados na seguinte estrutura:
 
 ```
 packages/
-└── package-name/
-    └── version/
-        ├── package.toml    # Manifest
-        └── archive.zip     # Package archive
+└── nome-pacote/
+    └── versao/
+        ├── package.toml    # Manifesto do pacote
+        └── archive.zip     # Arquivo compactado do pacote
 ```
 
-## License
+## Dependências
 
-MIT
+- **lpm-core**: Biblioteca central do LPM (instalada automaticamente)
+
+## Testes
+
+Os testes utilizam o framework de testes do LPM:
+
+```bash
+lua tests/test_server.lua
+```
+
+## Desenvolvimento
+
+Para contribuir com o desenvolvimento:
+
+1. Faça um fork do repositório
+2. Crie uma branch para sua feature (`git checkout -b feature/nova-funcionalidade`)
+3. Faça commit das suas alterações (`git commit -am 'Adiciona nova funcionalidade'`)
+4. Faça push para a branch (`git push origin feature/nova-funcionalidade`)
+5. Abra um Pull Request
+
+## Licença
+
+MIT License
